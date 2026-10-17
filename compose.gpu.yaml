@@ -1,0 +1,12 @@
+# NVIDIA overlay: docker compose -f compose.yaml -f compose.gpu.yaml up -d
+# Needs nvidia-container-toolkit and a driver that supports CUDA 13 (>= 580).
+services:
+  decide:
+    image: ghcr.io/jarekmor/ha_systemone:cuda
+    build:
+      args: {TORCH: cuda}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - {driver: nvidia, count: all, capabilities: [gpu]}

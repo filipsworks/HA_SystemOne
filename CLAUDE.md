@@ -27,6 +27,10 @@ uv run decide serve [--host 0.0.0.0] [--port 8765]   # FastAPI: POST /decide {"t
 
 After editing `aliases.yaml` or `templates.py`: `decide sync && decide index && decide eval`.
 
+Docker: `docker compose build` / `up -d` / `run --rm decide <args>` (same subcommands); `compose.gpu.yaml` is the NVIDIA overlay. A local `compose.override.yaml` (gitignored) is auto-merged.
+
+**torch variants:** extras `cpu` and `cuda` are declared as `conflicts` in `pyproject.toml` — without that, the extra-scoped cpu index leaks into the default resolution and *every* install gets CPU torch. Since `2.14.1+cpu` satisfies `==2.14.1`, `uv sync` won't swap an installed CPU build back; use `uv sync --reinstall-package torch`. Check with `python -c "import torch; print(torch.__version__)"`.
+
 ## Claude tooling (`.claude/`)
 
 - **`ha-api-poll` skill** — read-only HA REST queries for development: `.venv/bin/python .claude/skills/ha-api-poll/scripts/poll.py states <entity_id>` (also `history`, `logbook`, `services`, `config`, `get <path>`). Use it to inspect `supported_features`/attributes when an intent is missing, and to confirm the state change and logbook entry after an `--execute`. Not imported by `decision_ha` — the app uses `ha_client.py`. Its tests: `uv run --with pytest pytest .claude/skills/ha-api-poll/scripts/test_poll.py`.
@@ -57,8 +61,10 @@ After editing `aliases.yaml` or `templates.py`: `decide sync && decide index && 
 
 ## Deployment
 
-- `decide serve --host 0.0.0.0` (port 8765), called from HA via `rest_command` + an Assist automation — the YAML is in README and lives in HA, not in this repo.
-- After changing server code, the user must restart `decide serve`. `/decide` with `execute: true` changes real devices — the `--execute` rule applies.
+- `decide serve --host 0.0.0.0` (port 8765), normally the `decide` service of `compose.yaml`; called from HA via `rest_command` + an Assist automation — the YAML is in README and lives in HA, not in this repo.
+- Image: `Dockerfile` with `--build-arg TORCH=cpu|cuda` (= the uv extra); `DECISION_DIR=/config` (project dir mounted) and `HF_HOME=/models`; runs as uid 1000; HEALTHCHECK waits for `/health` → `"ok"`. Published by `.github/workflows/docker.yml` to `ghcr.io/jarekmor/ha_systemone:{cpu,cuda,latest}`; `tests.yml` runs pytest with `--extra cpu`.
+- Docker-published ports bypass ufw — README documents `network_mode: host` in `compose.override.yaml` to keep a firewall rule effective.
+- After changing server code, rebuild the image and `docker compose up -d` (or restart a hand-started `decide serve`). `/decide` with `execute: true` changes real devices — the `--execute` rule applies.
 - `speech` (`server.speech_for`): choice `none` → "Nie mam urządzenia…" (no alternatives — they misled); low confidence → "Czy chodziło o: <names>?"; gate < `min_gate` → "Nie rozumiem polecenia."
 
 ## Layout
@@ -67,8 +73,8 @@ After editing `aliases.yaml` or `templates.py`: `decide sync && decide index && 
 
 ## Known limits / next steps
 
-- Each CLI run loads both models (~10 s); `decide serve` loads them once at startup (`Pipeline.warm_up`, ~12 s), then ≈ 0.3 s per query on a GPU. Queries are serialized with a lock — fine for one home.
+- Each CLI run loads both models (~10 s); `decide serve` loads them once at startup (`Pipeline.warm_up`, ~12 s), then ≈ 0.3 s per query on a GPU, 0.7–1.4 s on CPU (Ryzen 7 7800X3D, CPU image). Queries are serialized with a lock — fine for one home.
 - `HAClient` raises `HAAuthError` on 401 (the CLI turns it into an exit message, the server into 502) — never `sys.exit` in code the server runs.
-- Untested so far: the `--extra cpu` install, macOS/Windows, CPU speed, and any HA install other than the author's (the example eval uses made-up entity IDs).
-- Roadmap: (1) read-only sensors (`sensor`/`binary_sensor`/`climate`, `query_state` only, filtered to temperature/humidity etc.; answer with value + unit; add eval cases) — list the home's sensors before choosing; (2) systemd user service for `decide serve`; (3) languages other than Polish, later.
+- Untested so far: macOS/Windows, the GitHub Actions workflows before their first run, and any HA install other than the author's (the example eval uses made-up entity IDs).
+- Roadmap: (1) read-only sensors (`sensor`/`binary_sensor`/`climate`, `query_state` only, filtered to temperature/humidity etc.; answer with value + unit; add eval cases) — list the home's sensors before choosing; (2) a local decision server as an alternative to TypeSafe; (3) keep the catalog in sync with HA without manual `sync`/`index`/restart; (4) a native HA conversation agent (HACS); (5) languages other than Polish, later.
 - Several numbers in one sentence → extra TypeSafe Choice (`decide.choose_value`); relative brightness/volume ("przyciemnij", "ścisz") uses ±20% steps / volume_up/down.

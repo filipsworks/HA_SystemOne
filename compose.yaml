@@ -1,0 +1,22 @@
+# CPU (default):  docker compose up -d
+# NVIDIA GPU:     docker compose -f compose.yaml -f compose.gpu.yaml up -d
+#                 (or put COMPOSE_FILE=compose.yaml:compose.gpu.yaml in .env)
+# One-off commands use the same image and config:
+#   docker compose run --rm decide init | sync | index | eval | "włącz światło w kuchni" -v
+services:
+  decide:
+    image: ghcr.io/jarekmor/ha_systemone:cpu
+    build:
+      context: .
+      args: {TORCH: cpu}
+    restart: unless-stopped
+    # Note: Docker-published ports bypass ufw/firewalld rules on the host. Execute requests
+    # still need DECISION_API_TOKEN; to keep a firewall rule effective see README (network_mode: host).
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./:/config            # .env, aliases.yaml, eval/commands.yaml, data/
+      - models:/models        # Hugging Face cache (~4.5 GB, downloaded on first start)
+
+volumes:
+  models:

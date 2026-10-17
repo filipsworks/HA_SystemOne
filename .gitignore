@@ -7,3 +7,4 @@ data/
 aliases.yaml
 eval/commands.yaml
 CLAUDE.local.md
+compose.override.yaml

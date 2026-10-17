@@ -1,0 +1,14 @@
+# Secrets and per-home files never go into the image — they are mounted at /config.
+.env
+aliases.yaml
+eval/
+data/
+CLAUDE.local.md
+compose.override.yaml
+.git/
+.venv/
+.claude/
+.github/
+**/__pycache__/
+.pytest_cache/
+tests/

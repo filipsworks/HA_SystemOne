@@ -1,0 +1,19 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.5"
+      # CPU torch: the tests mock HA and TypeSafe and never load the models.
+      - run: uv sync --locked --extra cpu
+      - run: uv run --extra cpu pytest -q
+      - run: uv run --extra cpu --with pytest pytest -q .claude/skills/ha-api-poll/scripts/test_poll.py
