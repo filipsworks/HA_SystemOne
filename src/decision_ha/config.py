@@ -8,13 +8,15 @@ from pathlib import Path
 import requests
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ENV_PATH = PROJECT_ROOT / ".env"
-DATA_DIR = PROJECT_ROOT / "data"
+# Where .env, aliases.yaml, eval/ and data/ live: the checkout, or the /config mount in Docker.
+CONFIG_DIR = Path(os.environ.get("DECISION_DIR") or PROJECT_ROOT)
+ENV_PATH = CONFIG_DIR / ".env"
+DATA_DIR = CONFIG_DIR / "data"
 CATALOG_PATH = DATA_DIR / "catalog.json"
 CHROMA_DIR = DATA_DIR / "chroma"
 # Per-home files, gitignored; the *.example.yaml next to them are the committed templates.
-ALIASES_PATH = PROJECT_ROOT / "aliases.yaml"
-EVAL_PATH = PROJECT_ROOT / "eval" / "commands.yaml"
+ALIASES_PATH = CONFIG_DIR / "aliases.yaml"
+EVAL_PATH = CONFIG_DIR / "eval" / "commands.yaml"
 
 
 def load_env_file(path=ENV_PATH):

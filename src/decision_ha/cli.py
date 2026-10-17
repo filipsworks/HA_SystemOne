@@ -136,6 +136,8 @@ def cmd_eval(args):
 def cmd_serve(args):
     import uvicorn
     from decision_ha.server import create_app
+    if not CATALOG_PATH.exists() or not CHROMA_DIR.exists():
+        sys.exit(f"Brak {CATALOG_PATH} lub {CHROMA_DIR}. Najpierw `decide sync` i `decide index`.")
     token = api_token()
     if token is None:
         print("Brak DECISION_API_TOKEN — serwer działa tylko w trybie dry-run (execute → 403).")

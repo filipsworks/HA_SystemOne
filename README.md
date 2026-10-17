@@ -17,14 +17,15 @@ Jeśli program **nie jest pewien**, o co chodzi, **nic nie robi** i dopytuje:
 1. [Jak to działa (w prostych słowach)](#jak-to-działa-w-prostych-słowach)
 2. [Czego potrzebujesz](#czego-potrzebujesz)
 3. [Instalacja](#instalacja)
-4. [Pierwsze uruchomienie (bez ryzyka)](#pierwsze-uruchomienie-bez-ryzyka)
-5. [Połączenie z Home Assistant](#połączenie-z-home-assistant)
-6. [Dopasowanie do swojego domu](#dopasowanie-do-swojego-domu-aliasesyaml)
-7. [Co potrafi](#co-potrafi)
-8. [Bezpieczeństwo](#bezpieczeństwo)
-9. [Gdy coś nie działa](#gdy-coś-nie-działa)
-10. [Słowniczek](#słowniczek)
-11. [Dla programistów](#dla-programistów)
+4. [Instalacja w Dockerze (zalecana)](#instalacja-w-dockerze-zalecana)
+5. [Pierwsze uruchomienie (bez ryzyka)](#pierwsze-uruchomienie-bez-ryzyka)
+6. [Połączenie z Home Assistant](#połączenie-z-home-assistant)
+7. [Dopasowanie do swojego domu](#dopasowanie-do-swojego-domu-aliasesyaml)
+8. [Co potrafi](#co-potrafi)
+9. [Bezpieczeństwo](#bezpieczeństwo)
+10. [Gdy coś nie działa](#gdy-coś-nie-działa)
+11. [Słowniczek](#słowniczek)
+12. [Dla programistów](#dla-programistów)
 
 ---
 
@@ -63,7 +64,8 @@ wysyłane jest tylko polecenie i opisy 5 kandydatów.
   program. Karta graficzna NVIDIA przyspiesza działanie, ale nie jest wymagana.
 - Polecenia **po polsku** — szablony zdań i odpowiedzi są tylko po polsku.
 - Ok. **4,5 GB miejsca** na modele (pobiorą się same przy pierwszym uruchomieniu).
-- Narzędzie **[uv](https://docs.astral.sh/uv/)** do instalacji Pythona i bibliotek.
+- **[Docker](https://docs.docker.com/engine/install/)** z Compose (zalecane) **albo**
+  narzędzie **[uv](https://docs.astral.sh/uv/)** do instalacji Pythona i bibliotek.
 - **Token dostępu do HA** (Long-Lived Access Token): w HA kliknij swój profil
   (lewy dolny róg) → zakładka **Bezpieczeństwo** → **Tokeny dostępu
   długoterminowego** → **Utwórz token**.
@@ -105,6 +107,75 @@ TYPESAFE_API_KEY=tu-wklej-klucz-TypeSafe
 
 > Plik `.env` zawiera hasła — **nie wysyłaj go nikomu** i nie wrzucaj do
 > repozytorium (jest już dodany do `.gitignore`).
+
+---
+
+## Instalacja w Dockerze (zalecana)
+
+Docker uruchamia serwer w tle, sam go wznawia po restarcie komputera i nie
+wymaga instalowania Pythona. Twoje pliki (`.env`, `aliases.yaml`,
+`eval/commands.yaml`, `data/`) zostają w katalogu projektu — kontener tylko je
+czyta i zapisuje. Modele (~4,5 GB) pobiorą się przy pierwszym starcie do
+osobnego wolumenu Dockera.
+
+```bash
+git clone https://github.com/jarekmor/HA_SystemOne.git
+cd HA_SystemOne
+cp .env_example .env          # i uzupełnij jak w rozdziale „Instalacja”
+docker compose pull           # gotowy obraz (albo: docker compose build)
+```
+
+Są dwa obrazy:
+
+| Obraz | Rozmiar | Szybkość odpowiedzi | Kiedy |
+|---|---|---|---|
+| `:cpu` (domyślny) | ~1,8 GB | ok. 0,7–1,4 s | każdy komputer |
+| `:cuda` | ~6,5 GB | ok. 0,3 s | karta NVIDIA + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), sterownik ≥ 580 |
+
+(Czasy zmierzone na Ryzen 7 7800X3D / RTX 5060 Ti, razem z zapytaniem do TypeSafe.)
+
+Dla karty NVIDIA dopisz do `.env` jedną linię — wtedy każde `docker compose …`
+użyje obrazu `:cuda`:
+
+```ini
+COMPOSE_FILE=compose.yaml:compose.gpu.yaml
+```
+
+Polecenia z dalszej części instrukcji uruchamiasz w kontenerze, zamieniając
+`uv run decide` na `docker compose run --rm decide`, np.:
+
+```bash
+docker compose run --rm decide init
+docker compose run --rm decide sync
+docker compose run --rm decide index
+docker compose run --rm decide "włącz światło w sypialni" -v
+```
+
+Serwer uruchamiasz raz — potem działa w tle:
+
+```bash
+docker compose up -d          # start (także po restarcie komputera)
+docker compose logs -f        # podgląd, Ctrl+C kończy podgląd
+docker compose ps             # stan: „healthy” = gotowy
+docker compose restart        # po zmianie aliases.yaml + decide sync/index
+docker compose down           # zatrzymanie
+```
+
+> **Zapora (ufw) a Docker:** porty wystawione przez Dockera **omijają reguły
+> ufw**. Jeśli chcesz, żeby do serwera mógł się łączyć tylko HA (rozdz.
+> „Połączenie z Home Assistant”, krok 3), utwórz obok `compose.yaml` plik
+> `compose.override.yaml` (jest w `.gitignore`):
+>
+> ```yaml
+> services:
+>   decide:
+>     network_mode: host
+>     ports: !reset []
+> ```
+>
+> Wtedy serwer słucha bezpośrednio na porcie 8765 komputera i reguła ufw
+> działa. Gdy w `.env` jest `COMPOSE_FILE`, dopisz do niego
+> `:compose.override.yaml`.
 
 ---
 
@@ -166,7 +237,7 @@ Pytania o stan („czy…”, „co gra…”) nic nie zmieniają, więc działa
 
 Uruchamianie z terminala jest wygodne do testów, ale za każdym razem ładuje
 modele (~10 s). Do codziennego użytku program działa jako **serwer**: ładuje
-modele raz, a potem odpowiada w ok. 0,3 s. HA wysyła do niego polecenia
+modele raz, a potem odpowiada w ok. 0,3 s (z kartą NVIDIA; na samym procesorze ok. 1 s). HA wysyła do niego polecenia
 z Assist i odczytuje odpowiedź.
 
 ```
@@ -187,6 +258,9 @@ echo "DECISION_API_TOKEN=$(openssl rand -hex 32)" >> .env
 Bez tego tokenu serwer działa wyłącznie „na sucho”.
 
 ### Krok 2. Uruchom serwer
+
+W Dockerze: `docker compose up -d` (patrz [Instalacja w Dockerze](#instalacja-w-dockerze-zalecana)).
+Bez Dockera:
 
 ```bash
 uv run decide serve --host 0.0.0.0
@@ -211,6 +285,9 @@ sudo ufw allow from <IP-HA> to any port 8765 proto tcp comment 'HA -> decision_h
 ```
 
 IP Home Assistanta znajdziesz w HA: **Ustawienia → System → Sieć**.
+
+W Dockerze ta reguła działa tylko z `network_mode: host` — patrz uwaga
+o zaporze w [Instalacji w Dockerze](#instalacja-w-dockerze-zalecana).
 
 ### Krok 4. Dodaj token do `secrets.yaml` w HA
 
@@ -464,7 +541,14 @@ API serwera: `POST /decide` z `{"text": "…", "execute": false}` zwraca
 `speech`, `accepted`, `executed`, `entity_id`, `intent`, `call`, `decision`,
 `reranked`. Opcjonalne ustawienia w `.env`: `TYPESAFE_MODEL` (np. `jev-1.13.0`),
 `DECISION_MIN_CONFIDENCE` (domyślnie 0,8), `DECISION_ALIASES` i `DECISION_EVAL`
-(inne ścieżki do `aliases.yaml` i zestawu testowego).
+(inne ścieżki do `aliases.yaml` i zestawu testowego). Zmienna środowiskowa
+`DECISION_DIR` wskazuje katalog z `.env`, `aliases.yaml`, `eval/` i `data/`
+(domyślnie katalog projektu; w Dockerze `/config`).
+
+Docker: `Dockerfile` buduje dwa warianty (`--build-arg TORCH=cpu|cuda`, odpowiadają
+extras `cpu`/`cuda` w `pyproject.toml`). GitHub Actions: `tests.yml` (pytest przy
+każdym pushu do `main` i w PR), `docker.yml` (obrazy `ghcr.io/jarekmor/ha_systemone:cpu`,
+`:cuda`, `:latest` z `main`; `:X.Y.Z-cpu`/`-cuda` z tagów `vX.Y.Z`).
 
 Struktura:
 
@@ -484,6 +568,8 @@ src/decision_ha/
   server.py      # FastAPI: POST /decide, GET /health
   cli.py         # komenda `decide`
 tests/           # pytest
+Dockerfile, compose.yaml, compose.gpu.yaml   # obrazy i uruchamianie w Dockerze
+.github/workflows/           # testy i publikacja obrazów
 eval/commands.example.yaml   # przykład zestawu testowego (własny: eval/commands.yaml, w .gitignore)
 aliases.example.yaml         # przykład dopasowania (własny: aliases.yaml, w .gitignore)
 ```
