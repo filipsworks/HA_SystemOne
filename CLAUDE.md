@@ -1,4 +1,4 @@
-# Home-Assistant-RAG-Jev
+# HA_SystemOne
 
 Polish text commands → Home Assistant service calls. Package and CLI are named `decision_ha` / `decide`.
 

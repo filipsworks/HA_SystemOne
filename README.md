@@ -1,4 +1,4 @@
-# Home-Assistant-RAG-Jev
+# HA_SystemOne
 
 **Steruj domem w Home Assistant zwykłymi zdaniami po polsku.**
 
@@ -74,8 +74,8 @@ wysyłane jest tylko polecenie i opisy 5 kandydatów.
 ## Instalacja
 
 ```bash
-git clone <adres-repozytorium> Home-Assistant-RAG-Jev
-cd Home-Assistant-RAG-Jev
+git clone https://github.com/jarekmor/HA_SystemOne.git
+cd HA_SystemOne
 uv sync
 ```
 
