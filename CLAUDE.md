@@ -1,6 +1,7 @@
 # HA_SystemOne
 
 Polish text commands → Home Assistant service calls. Package and CLI are named `decision_ha` / `decide`.
+Public repo: https://github.com/jarekmor/HA_SystemOne (MIT), `origin` over SSH.
 
 ```
 text → bge-m3 embeddings + ChromaDB (top 30 action docs, grouped to (entity, intent))
@@ -50,7 +51,7 @@ After editing `aliases.yaml` or `templates.py`: `decide sync && decide index && 
 
 - `aliases.yaml` and `eval/commands.yaml` are per-home and **gitignored**; the committed templates are `aliases.example.yaml` and `eval/commands.example.yaml`. `DECISION_ALIASES` / `DECISION_EVAL` override the paths.
 - `decide init` writes a starting `aliases.yaml` from the HA instance (every area + commented list of controllable entities); it never overwrites.
-- Never commit anything home-specific (entity IDs, IPs, device names) to tracked files — that goes into the gitignored `CLAUDE.local.md`, `aliases.yaml` or the eval set.
+- **The repo is public: everything committed is published.** Never commit anything home-specific (entity IDs, IPs, device names, tokens) — that goes into the gitignored `CLAUDE.local.md`, `aliases.yaml` or the eval set. Before each push, check the diff (`git diff origin/main`) for such data.
 - Polish only for now: `templates`, `params`, `execute`, `server.speech_for` and the `areas` locatives are all Polish.
 - media_player intents are derived from `supported_features` bits (`catalog.py`), so devices differ per home.
 
@@ -66,7 +67,8 @@ After editing `aliases.yaml` or `templates.py`: `decide sync && decide index && 
 
 ## Known limits / next steps
 
-- Each CLI run loads both models (~10 s); `decide serve` loads them once at startup (`Pipeline.warm_up`, ~12 s), then ≈ 0.3 s per query. HA calls it via `rest_command` (example in README). Queries are serialized with a lock — fine for one home.
+- Each CLI run loads both models (~10 s); `decide serve` loads them once at startup (`Pipeline.warm_up`, ~12 s), then ≈ 0.3 s per query on a GPU. Queries are serialized with a lock — fine for one home.
 - `HAClient` raises `HAAuthError` on 401 (the CLI turns it into an exit message, the server into 502) — never `sys.exit` in code the server runs.
-- Next steps the user was offered: (1) read-only sensors (`sensor`/`binary_sensor`/`climate`, `query_state` only, filtered to temperature/humidity etc.; answer with value + unit; add eval cases) — list the user's sensors before choosing; (2) systemd user service for `decide serve`.
+- Untested so far: the `--extra cpu` install, macOS/Windows, CPU speed, and any HA install other than the author's (the example eval uses made-up entity IDs).
+- Roadmap: (1) read-only sensors (`sensor`/`binary_sensor`/`climate`, `query_state` only, filtered to temperature/humidity etc.; answer with value + unit; add eval cases) — list the home's sensors before choosing; (2) systemd user service for `decide serve`; (3) languages other than Polish, later.
 - Several numbers in one sentence → extra TypeSafe Choice (`decide.choose_value`); relative brightness/volume ("przyciemnij", "ścisz") uses ±20% steps / volume_up/down.
