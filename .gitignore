@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+data/
+# per-home configuration — templates: aliases.example.yaml, eval/commands.example.yaml
+aliases.yaml
+eval/commands.yaml
+CLAUDE.local.md

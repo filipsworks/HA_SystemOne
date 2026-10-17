@@ -1,0 +1,37 @@
+# Przykład. Skopiuj do aliases.yaml (albo wygeneruj szkielet: `decide init`) i dopasuj do swojego domu.
+# aliases.yaml jest w .gitignore. Po zmianie: `decide sync && decide index && decide eval`.
+
+# Obszary HA (nazwy z HA) → polska nazwa i forma "gdzie".
+# Jeśli obszary w HA są już po polsku, wystarczy dopisać `where`.
+areas:
+  Bedroom:      {name: sypialnia, where: w sypialni}
+  Living Room:  {name: salon,     where: w salonie}
+  Kitchen:      {name: kuchnia,   where: w kuchni}
+
+# Encje pomijane (wzorce fnmatch): duplikaty, encje administracyjne, przyciski identyfikacji.
+exclude:
+  - "*zigbee2mqtt_bridge*"
+  - "button.*_identify"
+  - "select.*_power_on_behavior"
+
+# Per-encja: name, aliases, area (nazwa obszaru HA), description, exclude.
+entities:
+  # Przekaźnik, który steruje lampą sufitową — HA widzi go jako switch.
+  switch.bedroom_relay:
+    name: Światło w sypialni
+    aliases: [lampa w sypialni, górne światło w sypialni]
+    description: główne oświetlenie sypialni (przekaźnik)
+  # Dioda statusowa na tym samym przekaźniku — opis pomaga ich nie pomylić.
+  light.bedroom_relay_status_led:
+    aliases: [dioda w sypialni]
+    description: mała dioda statusowa na przekaźniku, nie jest to oświetlenie pokoju
+  # Encja bez obszaru w HA — przypisz go tutaj.
+  light.stairs:
+    name: Światło na schodach
+    aliases: [schody, lampa na schodach]
+  # Marki i nazwy własne warto dodać jako aliasy.
+  media_player.living_room_tv:
+    name: Telewizor
+    aliases: [tv, telewizor w salonie]
+  switch.old_plug:
+    exclude: true

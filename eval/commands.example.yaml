@@ -1,0 +1,17 @@
+# Przykład zestawu ewaluacyjnego. Skopiuj do eval/commands.yaml (jest w .gitignore)
+# i wpisz polecenia dla swoich encji. Uruchom: `decide eval`.
+# expect: none = system powinien się wstrzymać. data: opcjonalnie sprawdzane pola wywołania usługi.
+
+- {text: "włącz światło w sypialni", entity: switch.bedroom_relay, intent: turn_on}
+- {text: "zgaś światło w sypialni", entity: switch.bedroom_relay, intent: turn_off}
+- {text: "czy w sypialni pali się światło?", entity: switch.bedroom_relay, intent: query_state}
+- {text: "wyłącz diodę w sypialni", entity: light.bedroom_relay_status_led, intent: turn_off}
+- {text: "ustaw schody na 30%", entity: light.stairs, intent: set_brightness, data: {brightness_pct: 30}}
+- {text: "przyciemnij światło na schodach", entity: light.stairs, intent: set_brightness, data: {brightness_step_pct: -20}}
+- {text: "ustaw głośność telewizora na 20", entity: media_player.living_room_tv, intent: set_volume, data: {volume_level: 0.2}}
+
+# --- powinien się wstrzymać (te działają w każdym domu)
+- {text: "jaka jest stolica Francji?", expect: none}
+- {text: "opowiedz mi dowcip", expect: none}
+- {text: "otwórz bramę wjazdową", expect: none}
+- {text: "zamów pizzę", expect: none}

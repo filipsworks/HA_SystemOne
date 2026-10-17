@@ -1,0 +1,49 @@
+[project]
+name = "decision-ha"
+version = "0.1.0"
+description = "Polskie polecenia tekstowe → wywołania usług Home Assistanta (embeddingi + reranker + TypeSafe AI)"
+authors = [
+    { name = "jarekmor", email = "jarekmor@gmail.com" }
+]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "typesafe-sdk",
+    "sentence-transformers>=3.0",
+    "torch>=2.7",
+    "chromadb>=1.0",
+    "requests>=2.31",
+    "pyyaml>=6.0",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+# Default = torch from PyPI (CUDA build on Linux, incl. RTX 50xx; CPU/MPS on macOS).
+# No NVIDIA GPU: `uv sync --extra cpu` and `uv run --extra cpu …` — a much smaller download.
+cpu = ["torch>=2.7"]
+
+[project.scripts]
+decide = "decision_ha.cli:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+    "pytest>=8",
+]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", extra = "cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
