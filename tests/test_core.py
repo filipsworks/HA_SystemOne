@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -177,6 +178,34 @@ def test_decide_with_fake_client():
     decision = decide(client, "włącz a", candidates, describe, describe, SETTINGS)
     assert decision.accepted and decision.fits == {"switch.a::turn_on": 0.9, "light.b::turn_on": 0.1}
     assert client.calls[0][0]["command"] == "włącz a"
+
+
+def test_decide_with_lmstudio_client():
+    """The TypeSafe SDK parses LM Studio's /v1/systemone answers (shape from the llama.cpp server docs)."""
+    import httpx2
+    from decision_ha.compat import build_lmstudio_client
+    requests_seen = []
+
+    def handler(request):
+        requests_seen.append(request)
+        return httpx2.Response(200, json={"model": "local-decider", "usage": {"input_tokens": 239, "output_tokens": 0}, "answers": {
+            "action": {"type": "choice", "choice": "switch.a::turn_on", "confidence": 0.93,
+                       "probabilities": {"switch.a::turn_on": 0.95, "light.b::turn_on": 0.03, NONE: 0.02}},
+            "gate": {"type": "noul", "noul": 0.97},
+            "fits_0": {"type": "noul", "noul": 0.9},
+            "fits_1": {"type": "noul", "noul": 0.1},
+        }})
+
+    client = build_lmstudio_client("http://lmstudio.test:1234", transport=httpx2.MockTransport(handler))
+    candidates = [Candidate("switch.a", "turn_on"), Candidate("light.b", "turn_on")]
+    describe = lambda c: c.key
+    decision = decide(client, "włącz a", candidates, describe, describe, Settings(typesafe_model="local-decider"))
+    assert decision.accepted and decision.choice == "switch.a::turn_on" and decision.gate == 0.97
+    request = requests_seen[0]
+    assert str(request.url) == "http://lmstudio.test:1234/v1/systemone"
+    assert "content-encoding" not in request.headers
+    body = json.loads(request.content)
+    assert body["model"] == "local-decider" and body["questions"]["action"]["type"] == "choice"
 
 
 def test_describe_state():

@@ -1,6 +1,7 @@
 """decide init | sync | index | eval | serve [--host H] [--port P] | decide "<polecenie>" [--execute] [--verbose]"""
 
 import argparse
+import os
 import sys
 import time
 
@@ -54,10 +55,15 @@ def cmd_index(args):
 
 def make_pipeline(with_ha=True):
     from typesafe_sdk import TypeSafeClient
+    from decision_ha.compat import build_lmstudio_client
     from decision_ha.pipeline import Pipeline
-    require_typesafe_key()
-    settings = Settings.from_env()
-    return Pipeline(settings, TypeSafeClient(), ha_client() if with_ha else None)
+    settings = Settings.from_env()  # also loads .env
+    if lmstudio_url := os.environ.get("LMSTUDIO_URL"):
+        client = build_lmstudio_client(lmstudio_url)
+    else:
+        require_typesafe_key()
+        client = TypeSafeClient()
+    return Pipeline(settings, client, ha_client() if with_ha else None)
 
 
 def print_result(result, verbose):

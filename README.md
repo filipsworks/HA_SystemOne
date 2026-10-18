@@ -550,6 +550,13 @@ API serwera: `POST /decide` z `{"text": "…", "execute": false}` zwraca
 `DECISION_DIR` wskazuje katalog z `.env`, `aliases.yaml`, `eval/` i `data/`
 (domyślnie katalog projektu; w Dockerze `/config`).
 
+Lokalny serwer decyzji zamiast TypeSafe: [LM Studio](https://lmstudio.ai/docs/developer/jev-compat/systemone)
+udostępnia zgodny z Jev endpoint `POST /v1/systemone`. Ustaw w `.env`
+`LMSTUDIO_URL=http://127.0.0.1:1234` i `TYPESAFE_MODEL` = identyfikator załadowanego
+modelu decyzyjnego (zwykły model czatu nie zadziała); `TYPESAFE_API_KEY` nie jest
+wtedy potrzebny. `LMSTUDIO_API_KEY` — tylko gdy w LM Studio włączone jest
+„Require Authentication”. Po zmianie uruchom `decide eval` — progi dobrano pod Jev.
+
 Docker: `Dockerfile` buduje dwa warianty (`--build-arg TORCH=cpu|cuda`, odpowiadają
 extras `cpu`/`cuda` w `pyproject.toml`). GitHub Actions: `tests.yml` (pytest przy
 każdym pushu do `main` i w PR), `docker.yml` (obrazy `ghcr.io/jarekmor/ha_systemone:cpu`,
@@ -566,6 +573,7 @@ src/decision_ha/
   index.py       # bge-m3 + ChromaDB
   rerank.py      # cross-encoder
   decide.py      # pytania TypeSafe i bramka pewności
+  compat.py      # klient LM Studio (/v1/systemone) zamiast TypeSafe
   params.py      # liczby, kolory, opcje z tekstu
   actions.py     # mapowanie na usługi + lista dozwolonych
   execute.py     # odpowiedzi o stanie po polsku

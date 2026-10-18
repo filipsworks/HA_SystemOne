@@ -41,7 +41,7 @@ Docker: `docker compose build` / `up -d` / `run --rm decide <args>` (same subcom
 - **Never run `--execute` (or `"execute": true` against `decide serve`) without the user's explicit OK for that specific command** — it changes real devices. Dry-run, `sync`, `eval` and state questions are read-only.
 - Anything new the tool may send must be added to `ALLOWED` in `src/decision_ha/actions.py`; locks, alarms, gates and covers are deliberately absent.
 - Home-specific notes (devices, IPs, eval baseline) are in `CLAUDE.local.md` (gitignored), when present.
-- Credentials live only in this project's `.env` (`HA_URL`, `HA_TOKEN`, `TYPESAFE_API_KEY`, optional `TYPESAFE_MODEL`, `DECISION_MIN_CONFIDENCE`, `DECISION_API_TOKEN`). Never print their values. The SDK does not read `.env` itself; `config.load_env_file()` does.
+- Credentials live only in this project's `.env` (`HA_URL`, `HA_TOKEN`, `TYPESAFE_API_KEY`, optional `TYPESAFE_MODEL`, `DECISION_MIN_CONFIDENCE`, `DECISION_API_TOKEN`, `LMSTUDIO_URL`, `LMSTUDIO_API_KEY`). Never print their values. The SDK does not read `.env` itself; `config.load_env_file()` does.
 - `data/` is generated and gitignored — rebuild, don't hand-edit.
 - Conventions: code, comments and TypeSafe instructions in English; user-facing CLI output, README, templates and aliases in Polish.
 
@@ -69,12 +69,12 @@ Docker: `docker compose build` / `up -d` / `run --rm decide <args>` (same subcom
 
 ## Layout
 
-`src/decision_ha/`: `config` (env, paths, thresholds) · `ha_client` (REST; areas via `/api/template`) · `catalog` (filter, intents, aliases) · `templates` (Polish sentences, candidate descriptions, fits questions) · `index` (bge-m3 + Chroma) · `rerank` · `decide` (TypeSafe questions + `apply_gate`) · `params` (numbers, colours, options) · `actions` (service mapping + allowlist) · `execute` (Polish state answers) · `pipeline` · `server` (FastAPI; no `DECISION_API_TOKEN` → execute refused with 403) · `cli`.
+`src/decision_ha/`: `config` (env, paths, thresholds) · `ha_client` (REST; areas via `/api/template`) · `catalog` (filter, intents, aliases) · `templates` (Polish sentences, candidate descriptions, fits questions) · `index` (bge-m3 + Chroma) · `rerank` · `decide` (TypeSafe questions + `apply_gate`) · `compat` (`LMSTUDIO_URL` set → `TypeSafeClient` pointed at LM Studio's Jev-compatible `POST /v1/systemone`; `TYPESAFE_MODEL` = the loaded decision model) · `params` (numbers, colours, options) · `actions` (service mapping + allowlist) · `execute` (Polish state answers) · `pipeline` · `server` (FastAPI; no `DECISION_API_TOKEN` → execute refused with 403) · `cli`.
 
 ## Known limits / next steps
 
 - Each CLI run loads both models (~10 s); `decide serve` loads them once at startup (`Pipeline.warm_up`, ~12 s), then ≈ 0.3 s per query on a GPU, 0.7–1.4 s on CPU (Ryzen 7 7800X3D, CPU image). Queries are serialized with a lock — fine for one home.
 - `HAClient` raises `HAAuthError` on 401 (the CLI turns it into an exit message, the server into 502) — never `sys.exit` in code the server runs.
 - Untested so far: macOS/Windows, the GitHub Actions workflows before their first run, and any HA install other than the author's (the example eval uses made-up entity IDs).
-- Roadmap: (1) read-only sensors (`sensor`/`binary_sensor`/`climate`, `query_state` only, filtered to temperature/humidity etc.; answer with value + unit; add eval cases) — list the home's sensors before choosing; (2) a local decision server as an alternative to TypeSafe; (3) keep the catalog in sync with HA without manual `sync`/`index`/restart; (4) a native HA conversation agent (HACS); (5) languages other than Polish, later.
+- Roadmap: (1) read-only sensors (`sensor`/`binary_sensor`/`climate`, `query_state` only, filtered to temperature/humidity etc.; answer with value + unit; add eval cases) — list the home's sensors before choosing; (2) a local decision server as an alternative to TypeSafe — LM Studio via `compat` is wired but not yet run against `decide eval`; (3) keep the catalog in sync with HA without manual `sync`/`index`/restart; (4) a native HA conversation agent (HACS); (5) languages other than Polish, later.
 - Several numbers in one sentence → extra TypeSafe Choice (`decide.choose_value`); relative brightness/volume ("przyciemnij", "ścisz") uses ±20% steps / volume_up/down.
