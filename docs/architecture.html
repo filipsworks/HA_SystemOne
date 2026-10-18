@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Architektura HA_SystemOne</title>
+<style>
+  :root {
+    --ink: #1d2433; --muted: #5b6475; --line: #8a93a6;
+    --ha-bg: #eaf5fc; --ha-bd: #2f8fcf;
+    --dk-bg: #f3effb; --dk-bd: #6d4fc2;
+    --ts-bg: #fff4e0; --ts-bd: #d98a00;
+    --fs-bg: #f1f3f6; --fs-bd: #8a93a6;
+    --ok: #1f9d55;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 1600px; height: 1060px; background: #ffffff; color: var(--ink);
+         font-family: "Noto Sans", "DejaVu Sans", sans-serif; position: relative; overflow: hidden; }
+  .abs { position: absolute; }
+  h1 { position: absolute; left: 40px; top: 28px; font-size: 34px; font-weight: 700; letter-spacing: -0.3px; }
+  .sub { position: absolute; left: 40px; top: 78px; font-size: 18px; color: var(--muted); }
+  .zone { position: absolute; border: 2px solid; border-radius: 18px; }
+  .zone > .label { position: absolute; left: 22px; top: 14px; font-size: 20px; font-weight: 700; }
+  .zone > .hint { position: absolute; left: 22px; top: 42px; font-size: 14px; color: var(--muted); }
+  .card { position: absolute; background: #fff; border: 1.5px solid; border-radius: 12px;
+          padding: 14px 18px; box-shadow: 0 1px 3px rgba(20, 30, 50, .08); }
+  .card b { display: block; font-size: 17px; margin-bottom: 5px; }
+  .card span { display: block; font-size: 14px; color: var(--muted); line-height: 1.4; }
+  .card code { font-family: "DejaVu Sans Mono", monospace; font-size: 13px; color: var(--ink); }
+  .num { position: absolute; left: -16px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px;
+         border-radius: 50%; background: var(--dk-bd); color: #fff; font-weight: 700; font-size: 16px;
+         display: flex; align-items: center; justify-content: center; }
+  .tag { position: absolute; font-size: 13px; color: var(--muted); background: #fff; padding: 1px 6px; border-radius: 6px; }
+  svg { position: absolute; left: 0; top: 0; }
+</style>
+</head>
+<body>
+  <h1>HA_SystemOne — jak polskie polecenie staje się akcją w Home Assistant</h1>
+  <div class="sub">Wyszukiwanie po znaczeniu + klasyfikator TypeSafe: program wybiera tylko spośród istniejących urządzeń i akcji albo dopytuje — niczego nie zmyśla.</div>
+
+  <!-- Home Assistant -->
+  <div class="zone" style="left:40px; top:125px; width:380px; height:885px; background:var(--ha-bg); border-color:var(--ha-bd)">
+    <div class="label" style="color:var(--ha-bd)">Home Assistant</div>
+    <div class="hint">dowolna instalacja z dostępem przez sieć</div>
+  </div>
+  <div class="card" style="left:70px; top:200px; width:320px; height:110px; border-color:var(--ha-bd)">
+    <b>Assist (głos lub tekst)</b>
+    <span>„dom włącz światło w kuchni”</span>
+    <span>„dom czy na schodach się świeci?”</span>
+  </div>
+  <div class="card" style="left:70px; top:350px; width:320px; height:100px; border-color:var(--ha-bd)">
+    <b>Automatyzacja</b>
+    <span>zdanie <code>dom {polecenie}</code><br>→ wywołaj <code>rest_command</code></span>
+  </div>
+  <div class="card" style="left:70px; top:490px; width:320px; height:110px; border-color:var(--ha-bd)">
+    <b>rest_command</b>
+    <span><code>POST /decide</code><br>token Bearer z <code>secrets.yaml</code></span>
+  </div>
+  <div class="card" style="left:70px; top:780px; width:320px; height:140px; border-color:var(--ha-bd)">
+    <b>REST API Home Assistant</b>
+    <span>wykonanie akcji:<br><code>/api/services/&lt;domena&gt;/&lt;usługa&gt;</code></span>
+    <span>stan i lista urządzeń: <code>/api/states</code></span>
+  </div>
+
+  <!-- Docker container -->
+  <div class="zone" style="left:500px; top:125px; width:650px; height:885px; background:var(--dk-bg); border-color:var(--dk-bd)">
+    <div class="label" style="color:var(--dk-bd)">Kontener Docker: decide serve (port 8765)</div>
+    <div class="hint">obraz :cpu (~1 s / polecenie) lub :cuda (~0,3 s) · modele ładowane raz przy starcie</div>
+  </div>
+  <div class="card" style="left:540px; top:200px; width:570px; height:110px; border-color:var(--dk-bd)">
+    <div class="num">1</div>
+    <b>Katalog urządzeń</b>
+    <span>urządzenia i dozwolone akcje (z <code>supported_features</code>),<br>polskie nazwy, aliasy, pomieszczenia i opisy z <code>aliases.yaml</code></span>
+  </div>
+  <div class="card" style="left:540px; top:345px; width:570px; height:105px; border-color:var(--dk-bd)">
+    <div class="num">2</div>
+    <b>Wyszukiwanie po znaczeniu</b>
+    <span>embeddingi <code>bge-m3</code> + ChromaDB → 30 kandydatów (urządzenie, akcja)<br>radzi sobie z odmianą: „zgaś kuchnię”, „lampę w sypialni”</span>
+  </div>
+  <div class="card" style="left:540px; top:485px; width:570px; height:95px; border-color:var(--dk-bd)">
+    <div class="num">3</div>
+    <b>Reranker</b>
+    <span>cross-encoder <code>bge-reranker-v2-m3</code> → 5 najlepszych kandydatów</span>
+  </div>
+  <div class="card" style="left:540px; top:615px; width:570px; height:115px; border-color:var(--dk-bd)">
+    <div class="num">4</div>
+    <b>Decyzja: TypeSafe AI</b>
+    <span>wybór jednego z 5 kandydatów albo „żaden”, z pewnością 0–1<br>+ sprawdzenie, czy to w ogóle polecenie dla domu</span>
+  </div>
+  <div class="card" style="left:540px; top:765px; width:570px; height:155px; border-color:var(--dk-bd)">
+    <div class="num">5</div>
+    <b>Bramka bezpieczeństwa</b>
+    <span>pewność ≥ 0,8 i wybór inny niż „żaden” → <b style="display:inline;color:var(--ok);font-size:14px">wykonaj</b> lub odczytaj stan</span>
+    <span>niepewność → „Czy chodziło o: …?” · nic nie pasuje → „Nie mam urządzenia…”</span>
+    <span>tylko usługi z listy dozwolonych — bez zamków, alarmów, bram i rolet</span>
+  </div>
+
+  <!-- Right column -->
+  <div class="card" style="left:1230px; top:200px; width:330px; height:150px; border-color:var(--fs-bd); background:var(--fs-bg)">
+    <b>/config — pliki Twojego domu</b>
+    <span><code>.env</code> — adres HA, tokeny, klucz</span>
+    <span><code>aliases.yaml</code> — polskie nazwy</span>
+    <span><code>eval/</code> — własny test dokładności</span>
+    <span><code>data/</code> — katalog i indeks</span>
+  </div>
+  <div class="card" style="left:1230px; top:385px; width:330px; height:95px; border-color:var(--fs-bd); background:var(--fs-bg)">
+    <b>/models</b>
+    <span>modele z Hugging Face (~4,5 GB),<br>pobierane przy pierwszym starcie</span>
+  </div>
+  <div class="card" style="left:1230px; top:615px; width:330px; height:115px; border-color:var(--ts-bd); background:var(--ts-bg)">
+    <b>TypeSafe API (chmura)</b>
+    <span>skalibrowany klasyfikator:<br>wybiera z podanych opcji, nie generuje tekstu</span>
+  </div>
+  <div class="card" style="left:1230px; top:775px; width:330px; height:160px; border-color:var(--fs-bd); background:#fff">
+    <b>Przygotowanie (raz i po zmianach)</b>
+    <span><code>decide init</code> → szkielet <code>aliases.yaml</code></span>
+    <span><code>decide sync</code> → katalog z HA</span>
+    <span><code>decide index</code> → indeks</span>
+    <span><code>decide eval</code> → test dokładności</span>
+  </div>
+
+  <svg width="1600" height="1060" viewBox="0 0 1600 1060">
+    <defs>
+      <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#4a5366"/>
+      </marker>
+      <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#1f9d55"/>
+      </marker>
+    </defs>
+    <g fill="none" stroke="#4a5366" stroke-width="2.2">
+      <!-- inside HA -->
+      <path d="M230 310 V348" marker-end="url(#a)"/>
+      <path d="M230 450 V488" marker-end="url(#a)"/>
+      <!-- request to container -->
+      <path d="M390 560 H455 V228 H538" marker-end="url(#a)"/>
+      <!-- pipeline -->
+      <path d="M825 310 V343" marker-end="url(#a)"/>
+      <path d="M825 450 V483" marker-end="url(#a)"/>
+      <path d="M825 580 V613" marker-end="url(#a)"/>
+      <path d="M825 730 V763" marker-end="url(#a)"/>
+      <!-- TypeSafe both ways -->
+      <path d="M1110 660 H1228" marker-end="url(#a)"/>
+      <path d="M1230 690 H1112" marker-end="url(#a)"/>
+      <!-- files and models -->
+      <path d="M1230 255 H1112" stroke-dasharray="6 5" marker-end="url(#a)"/>
+      <path d="M1230 432 H1112" stroke-dasharray="6 5" marker-end="url(#a)"/>
+      <!-- answer back to Assist -->
+      <path d="M540 905 H475 V240 H392" stroke-dasharray="7 6" marker-end="url(#a)"/>
+    </g>
+    <!-- execute -->
+    <path d="M540 820 H392" fill="none" stroke="#1f9d55" stroke-width="2.6" marker-end="url(#g)"/>
+    <!-- sync reads HA states (setup) -->
+    <path d="M1230 880 H1180 V1035 H230 V922" fill="none" stroke="#8a93a6" stroke-width="1.8" stroke-dasharray="3 5" marker-end="url(#a)"/>
+  </svg>
+
+    <div class="tag" style="left:402px; top:533px">{text}</div>
+  <div class="tag" style="left:398px; top:792px; color:var(--ok); font-weight:700">wywołanie usługi</div>
+  <div class="tag" style="left:395px; top:212px">odpowiedź „speech”</div>
+  <div class="tag" style="left:1128px; top:633px">pytanie</div>
+  <div class="tag" style="left:1120px; top:697px">wybór + pewność</div>
+  <div class="tag" style="left:1135px; top:229px">czyta</div>
+  <div class="tag" style="left:1135px; top:406px">modele</div>
+  <div class="tag" style="left:600px; top:1023px">decide sync: lista urządzeń i pomieszczeń z HA (tylko odczyt)</div>
+</body>
+</html>
