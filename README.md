@@ -10,6 +10,8 @@ wtedy tylko sprawdza stan i odpowiada.
 Jeśli program **nie jest pewien**, o co chodzi, **nic nie robi** i dopytuje:
 *„Nie jestem pewien. Czy chodziło o: Telewizor, Ekran telewizora, Podświetlenie telewizora?”*
 
+![Architektura HA_SystemOne: Assist w Home Assistant wysyła polecenie do kontenera Docker, który przez katalog urządzeń, wyszukiwanie po znaczeniu, reranker, decyzję TypeSafe i bramkę bezpieczeństwa wywołuje usługę w HA](docs/architecture.png)
+
 ---
 
 ## Spis treści
@@ -48,6 +50,9 @@ przez trzy etapy — jak sito, które za każdym razem jest drobniejsze:
    └─ pewność ≥ 0,8?  → TAK: wykonuje akcję w HA
                       → NIE: nic nie robi i dopytuje
 ```
+
+Cały przepływ — od Assist w HA, przez kontener, z powrotem do HA — pokazuje
+[schemat na górze strony](docs/architecture.png) (źródło: `docs/architecture.html`).
 
 Ważne: TypeSafe **niczego nie wymyśla**. Może tylko wybrać z listy, którą mu
 podamy. Dzięki temu nie „zgaduje” nazw urządzeń, które nie istnieją.
