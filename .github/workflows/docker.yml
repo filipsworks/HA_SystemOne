@@ -2,11 +2,24 @@ name: docker
 
 # main → :cpu, :cuda (and :latest = cpu); tag vX.Y.Z → :X.Y.Z-cpu, :X.Y.Z-cuda.
 # Pull requests only build the CPU image, without pushing.
+# Files that never reach the image (see .dockerignore) don't trigger a rebuild; tag pushes
+# ignore path filters, and "Run workflow" (workflow_dispatch) always builds.
 on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths-ignore: &not-in-image
+      - "**.md"
+      - "docs/**"
+      - "tests/**"
+      - "eval/**"
+      - "aliases.example.yaml"
+      - ".env_example"
+      - "compose*.yaml"
+      - ".claude/**"
+      - ".github/workflows/tests.yml"
   pull_request:
+    paths-ignore: *not-in-image
   workflow_dispatch:
 
 jobs:
